@@ -1,0 +1,101 @@
+defaults:
+  - _self_  # Changed *self* to _self_ as it's the correct syntax
+  
+config_dir: "/project/biocomplexity/wyr6fx(Nibir)/RemoteSensing/Pytorch-Lightening/KIIM/config/train.yaml"
+
+
+train:
+  seed: 60
+  save_dir: "experiments"
+  save_model: true
+  max_epochs: 70
+  batch_size: 32
+  learning_rate: 2e-4
+  weight_decay: 1e-4
+  early_stopping: true
+  patience: 20
+  accelerator: "gpu"
+  devices: [0,1,2,3]
+  strategy: "ddp"
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  check_val_every_n_epoch: 1
+  precision: 16
+  mode: "max"
+  monitor: "val_iou_macro"
+  verbose: true
+  top_k: 1 #how checkpoint value to save
+
+  
+dataset:
+  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/data-file/dataset_path-AZ-FL-UT-CO-WA.json"
+  crop_matrices_path: "/project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/Data-Collection/matrix"
+  data_file_index: "AZ" #"combined_samples_3500_p_val_0.6"
+  states: ["AZ", "UT", "NM", "CO", "WA"]  # Added quotes for consistency
+  image_size: [224, 224]  # Changed tuple notation to list
+  transform: false
+  gamma_value: 2
+  image_types: ["image"]  # Added quotes for consistency
+  agri_indices: ["ndvi", "ndti", "ndwi"]  # Added quotes and spaces after commas
+  
+dataloader:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  
+model:
+  backbone_name: "swin"
+  encoder_name: "resnet152"
+  num_classes: 4
+  learning_rate: 1e-4
+  use_attention: true
+  use_projection: true
+  use_rgb: true
+  use_ndvi: true
+  use_ndwi: true
+  use_ndti: true
+  pretrained_hidden_dim: 16
+  attention_hidden_dim: 16
+  gamma: 5.0
+  weight_decay: 1e-4
+  attention_type: "cross"
+  loss_config:
+    ce_weight: 0.0      # Fixed indentation and removed curly braces
+    dice_weight: 0.25
+    focal_weight: 0.35
+    kg_weight: 0.2
+    stream_weight: 0.2
+        
+logging:
+  use_wandb: true
+  project_name: "irrigation-segmentation"
+  run_name: ${now:%Y-%m-%d_%H-%M-%S}
+  save_dir: "logs"
+  
+finetune:
+  checkpoint_path: "experiments/best-model/model.ckpt"  # Path to pretrained model
+  strict: false  # Whether to strictly enforce matching keys when loading
+  freeze_backbone: false  # Whether to freeze backbone layers
+  freeze_encoder: false # Whether to freeze encoder layers
+  learning_rate: 1e-5  # Special learning rate for fine-tuning
+  
+tuning:
+  enabled: false  # Set to true to run hyperparameter tuning
+  n_trials: 50  # Number of trials to run
+  timeout: 72000  # Maximum time in seconds (20 hours)
+  
+  # Define parameter ranges (optional)
+  param_ranges:
+    learning_rate:
+      min: 1e-5
+      max: 1e-3
+    weight_decay:
+      min: 1e-6
+      max: 1e-3
+    gamma:
+      min: 0.0
+      max: 5.0
+    hidden_dims:
+      min: 8
+      max: 32
+      step: 8

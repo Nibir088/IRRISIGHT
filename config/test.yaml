@@ -1,0 +1,67 @@
+defaults:
+  - _self_  # Changed *self* to _self_ as it's the correct syntax
+  - model: kiim
+  - data: segmentation
+
+train:
+  seed: 42
+  save_dir: "experiments"
+  save_model: true
+  max_epochs: 70
+  batch_size: 32
+  learning_rate: 2e-4
+  weight_decay: 1e-4
+  early_stopping: true
+  patience: 20
+  accelerator: "gpu"
+  devices: [0]
+  strategy: "auto"
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 1
+  check_val_every_n_epoch: 1
+  precision: 16
+  
+dataset:
+  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/RemoteSensing/Pytorch-Lightening/data-file/dataset_path.json"
+  crop_matrices_path: "/project/biocomplexity/wyr6fx(Nibir)/RemoteSensing/irrigation-label/crop_to_irrigation_matrix"
+  data_file_index: "combined_samples_3500_p_val_0.6"
+  states: ["AZ", "UT", "NM", "CO", "WA"]  # Added quotes for consistency
+  image_size: [224, 224]  # Changed tuple notation to list
+  transform: false
+  gamma_value: 2
+  image_types: ["image"]  # Added quotes for consistency
+  agri_indices: ["ndvi", "ndti", "ndwi"]  # Added quotes and spaces after commas
+  
+dataloader:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+  
+model:
+  backbone_name: "unet"
+  encoder_name: "resnet152"
+  num_classes: 4
+  learning_rate: 1e-4
+  use_attention: true
+  use_projection: true
+  use_rgb: true
+  use_ndvi: true
+  use_ndwi: true
+  use_ndti: true
+  pretrained_hidden_dim: 16
+  attention_hidden_dim: 16
+  gamma: 5.0
+  weight_decay: 1e-4
+  attention_type: "self"
+  loss_config:
+    ce_weight: 0.0      # Fixed indentation and removed curly braces
+    dice_weight: 0.25
+    focal_weight: 0.35
+    kg_weight: 0.2
+    stream_weight: 0.2
+        
+logging:
+  use_wandb: true
+  project_name: "irrigation-segmentation"
+  run_name: ${now:%Y-%m-%d_%H-%M-%S}
+  save_dir: "logs"
