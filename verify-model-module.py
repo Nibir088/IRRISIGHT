@@ -1,5 +1,6 @@
 import yaml
-from models.TeacherModel import KIIM  # Import your model
+from models.BaseModel import KIIM  # Import your model
+from models.TeacherStudentModel_v1 import TeacherStudentKIIM
 import torch
 import pytorch_lightning as pl
 

@@ -21,7 +21,7 @@ class FocalLoss(nn.Module):
         self.gamma = gamma
         self.alpha = alpha
 
-    def forward(self, pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    def forward(self, pred: torch.Tensor, target: torch.Tensor, is_label) -> torch.Tensor:
         """
         Calculate focal loss.
         
@@ -43,6 +43,7 @@ class FocalLoss(nn.Module):
         ce_loss = F.cross_entropy(pred, target, reduction='none',weight=weights_tensor)
         pt = torch.exp(-ce_loss)
         focal_loss = (1 - pt) ** self.gamma * ce_loss
+        # print(focal_loss.shape, is_label.shape)
         return focal_loss.mean()
 class DiceLoss(nn.Module):
     """
@@ -63,10 +64,13 @@ class DiceLoss(nn.Module):
         super().__init__()
         self.smooth = smooth
         
-    def forward(self, predictions: torch.Tensor, targets: torch.Tensor, land_mask: torch.Tensor,) -> torch.Tensor:
+    def forward(self, predictions: torch.Tensor, targets: torch.Tensor, land_mask: torch.Tensor, is_label) -> torch.Tensor:
+        
+        
         
         num_classes = predictions.shape[1]
         loss_mask = ((land_mask == 1) | (land_mask == 2)).unsqueeze(1).float()
+        # print('Prediction, Loss: ',predictions.shape, land_mask.shape)
         predictions = predictions * loss_mask
         
         
@@ -76,6 +80,8 @@ class DiceLoss(nn.Module):
         union = torch.sum(predictions, dim=(2, 3)) + torch.sum(targets_onehot, dim=(2, 3))
         
         dice = (2.0 * intersection + self.smooth) / (union + self.smooth)
+        # print('Dice loss, is_label: ',dice.shape, is_label.shape)
+        dice = dice[is_label]
         return 1 - dice.mean()
     
 class KGLoss(nn.Module):

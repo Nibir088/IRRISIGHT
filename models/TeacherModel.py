@@ -174,7 +174,8 @@ class KIIM(pl.LightningModule):
         predictions: torch.Tensor,
         targets: torch.Tensor,
         land_mask: Optional[torch.Tensor] = None,
-        stream_pred: Optional[torch.Tensor] = None
+        stream_pred: Optional[torch.Tensor] = None,
+        is_labeled = None,
     ) -> Dict[str, torch.Tensor]:
         """
         Compute combined loss with all components.
@@ -190,12 +191,12 @@ class KIIM(pl.LightningModule):
         
         losses = {}
         if self.loss_config["ce_weight"]>0:
-            losses['ce_loss'] = self.focal_loss(logits, targets) * self.loss_config["ce_weight"]
+            losses['ce_loss'] = self.focal_loss(logits, targets, is_labeled) * self.loss_config["ce_weight"]
         
         if self.loss_config["dice_weight"]>0:
-            losses['dice_loss'] = self.dice_loss(predictions, targets, land_mask) * self.loss_config["dice_weight"]
+            losses['dice_loss'] = self.dice_loss(predictions, targets, land_mask, is_labeled) * self.loss_config["dice_weight"]
         if self.loss_config["focal_weight"]>0:
-            losses['focal_loss'] = self.focal_loss(logits, targets) * self.loss_config["focal_weight"]
+            losses['focal_loss'] = self.focal_loss(logits, targets, is_labeled) * self.loss_config["focal_weight"]
         if self.loss_config["kg_weight"]>0:
             losses['kg_loss'] = self.kg_loss(self.projection.weights) * self.loss_config["kg_weight"]
         if stream_pred!=None and self.loss_config["stream_weight"]>0:
@@ -234,7 +235,8 @@ class KIIM(pl.LightningModule):
             outputs['predictions'],
             batch['true_mask'],
             batch.get('land_mask', None),
-            outputs.get('stream_pred',None)
+            outputs.get('stream_pred',None),
+            batch['is_label']
         )
         # Update metrics
         self.train_metrics.update(
@@ -267,7 +269,8 @@ class KIIM(pl.LightningModule):
             outputs['predictions'],
             batch['true_mask'],
             batch.get('land_mask', None),
-            outputs.get('stream_pred',None)
+            outputs.get('stream_pred',None),
+            batch['is_labeled']
         )
         
         # Update metrics
@@ -320,7 +323,8 @@ class KIIM(pl.LightningModule):
             outputs['predictions'],
             batch['true_mask'],
             batch.get('land_mask', None),
-            outputs.get('stream_pred', None)
+            outputs.get('stream_pred', None),
+            batch['is_label']
         )
 
         # Initialize test metrics for each dataloader on first use

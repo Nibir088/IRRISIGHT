@@ -13,6 +13,7 @@ def find_model(
     encoder_name: str = "resnet34",
     encoder_weights: str = "imagenet",
     encoder_depth: int = 5,
+    task : str ="segmentation",
     decoder_channels: Tuple[int, ...] = (256, 128, 64, 32, 16),
     decoder_attention_type: Optional[str] = None,
     activation: Optional[str] = None
@@ -155,6 +156,7 @@ def find_model(
         'swin': lambda: SwinUnet(
             num_classes=classes,
             in_channels=in_channels,
+            task=task,
             backbone_name="swin_base_patch4_window7_224"
         )
         
@@ -192,6 +194,7 @@ class PretrainedModel(nn.Module):
         hidden_dim: int = 16,
         encoder_name: str = "resnet34",
         encoder_weights: str = "imagenet",
+        task:str = 'segmentation',
         encoder_depth: int = 5,
         decoder_attention_type: Optional[str] = None,
         activation: Optional[str] = None,
@@ -211,7 +214,8 @@ class PretrainedModel(nn.Module):
             encoder_depth=encoder_depth,
             decoder_channels=decoder_channels,
             decoder_attention_type=decoder_attention_type,
-            activation=activation
+            activation=activation,
+            task=task
         )
         self.is_vit = model_name.lower() == 'vit'
         self.is_swin = model_name.lower() == 'swin'

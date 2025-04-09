@@ -138,6 +138,8 @@ class ImageMaskDataset(Dataset):
                  is_binary: bool = False,
                  image_types: List[str] = ['image'],
                  source: str = "landsat",
+                 is_supervised: bool = False,
+                 training_size = 100,
                  agri_indices: List[str] = []):
         """
         Initialize the dataset.
@@ -160,6 +162,9 @@ class ImageMaskDataset(Dataset):
         self.image_types = image_types
         self.agri_indices = agri_indices
         self.source = source
+        # self.len_unlabeled = int(len_unlabeled * len(image_paths))
+        self.is_supervised = is_supervised
+        self.training_size = training_size
         
         # Load crop matrices for each state
         # self.crop_matrices = {
@@ -238,5 +243,9 @@ class ImageMaskDataset(Dataset):
             'crop_mask': self._create_crop_matrix(
                 crop_msk)
         })
+        if self.is_supervised==False and idx>=self.training_size:
+            data['is_labeled'] = False
+        else:
+            data['is_labeled'] = True
         
         return data

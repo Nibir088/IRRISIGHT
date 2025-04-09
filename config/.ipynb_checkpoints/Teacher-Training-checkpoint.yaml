@@ -7,29 +7,31 @@ train:
   seed: 88
   # save_dir: "experiments_baseline_CO"
   save_model: true
-  max_epochs: 50
-  batch_size: 32
+  max_epochs: 10
+  # batch_size: 16
   learning_rate: 2e-4
   weight_decay: 1e-4
   early_stopping: true
   patience: 20
   accelerator: "gpu"
-  devices: [0,1,2]
+  devices: [0,1,2,3]
   strategy: "ddp"
   gradient_clip_val: 1.0
-  accumulate_grad_batches: 1
+  accumulate_grad_batches: 4
   check_val_every_n_epoch: 1
   precision: 16
   mode: "max"
   monitor: "val_iou_macro_irr"
   verbose: true
   top_k: 1 #how checkpoint value to save
+  alpha: 1 #0.6
+  alpha_decay: 1 # 0.99
   
 dataset:
-  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/KDD-25-Data-Track/train_test_split/Sentinel/AZ_combined.yaml"
+  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/KDD-25-Data-Track/train_test_split/Sentinel/wo_WA_combined.yaml"
   crop_matrices_path: "/project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/Data-Collection/matrix"
-  data_file_index: "AZ"
-  states: ["AZ", "UT", "FL", "CO", "WA"]  # Added quotes for consistency
+  data_file_index: "WA"
+  states: ["WA"]  # Added quotes for consistency
   image_size: [224, 224]  # Changed tuple notation to list
   transform: false
   gamma_value: 1.5
@@ -37,9 +39,10 @@ dataset:
   agri_indices: ["ndvi", "ndti", "ndwi",'evi','gndvi','savi','msavi','rvi','cigreen','pri','osavi','wdrvi']  # Added quotes and spaces after commas
   source: "sentinel"
   train_size: 80
+  is_supervised: true
   
 dataloader:
-  batch_size: 32
+  batch_size: 16
   num_workers: 4
   pin_memory: true
   
@@ -48,8 +51,8 @@ model:
   encoder_name: "resnet50"
   num_classes: 4
   learning_rate: 1e-4
-  use_attention: true
-  use_projection: true
+  use_attention: false
+  use_projection: false
   use_rgb: true
   use_ndvi: true
   use_ndwi: true
@@ -58,13 +61,13 @@ model:
   attention_hidden_dim: 16
   gamma: 5.0
   weight_decay: 1e-4
-  attention_type: "self"
+  attention_type: "cross"
   loss_config:
     use_ce: false
     ce_weight: 0.0      # Fixed indentation and removed curly braces
     dice_weight: 0.4
-    focal_weight: 0.55
-    kg_weight: 0.05
+    focal_weight: 0.6
+    kg_weight: 0.0
     stream_weight: 0.0
         
 logging:
@@ -106,7 +109,7 @@ hydra:
   job:
     chdir: True
   run:
-      dir: /project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/${dataset.data_file_index}/Supervised/${dataset.train_size}
+      dir: /project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/wo_${dataset.data_file_index}/Supervised/${dataset.train_size}
       # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/temp/test
     # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/outputs-KIIM-StateWise/${dataset.data_file_index}/2025-01-29/03-36-28
     # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/temp
