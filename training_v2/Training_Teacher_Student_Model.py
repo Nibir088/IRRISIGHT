@@ -13,13 +13,13 @@ import torch.nn as nn
 import wandb
 import pandas as pd
 from data.data_module import IrrigationDataModule
-from models.BaseModel import KIIM
-from models.TeacherStudentModel_v1 import TeacherStudentKIIM
+from models_v2.TeacherModel import TeacherModel
+# from models.TeacherStudentModel_v1 import TeacherStudentKIIM
 from utils.train_config import save_experiment_config
 import torch
 torch.set_float32_matmul_precision('high')
 
-@hydra.main(config_path="/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/KIIM/config", config_name="Teacher-Training", version_base="1.2")
+@hydra.main(config_path="/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/KIIM/config", config_name="Teacher-Training_v1", version_base="1.2")
 def train(cfg: DictConfig) -> None:
     print(f"Running on GPUs: {cfg.train.devices}")
     pl.seed_everything(cfg.train.seed)
@@ -28,24 +28,26 @@ def train(cfg: DictConfig) -> None:
     data_module.setup('fit')
     data_module.setup('test')
     
-    print(data_module.train_dataloader().batch_size, len(data_module.train_dataloader()))
+#     print(data_module.train_dataloader().batch_size, len(data_module.train_dataloader()))
     
     
-#     print(data_module.train_dataset)
-    student_model = KIIM(**cfg.model)
-    teacher_model = KIIM(**cfg.model)
+# #     print(data_module.train_dataset)
+    # print(**cfg)
+    # student_model = KIIM(**cfg.model)
+    # print(student_model)
+#     teacher_model = KIIM(**cfg.model)
     
-    # checkpoint = torch.load("/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/AZ/result_stats/checkpoints/epoch=45-val_iou_macro_irr=0.734.ckpt")
-    # teacher_model.load_state_dict(checkpoint['state_dict'], strict=False)
+#     # checkpoint = torch.load("/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/AZ/result_stats/checkpoints/epoch=45-val_iou_macro_irr=0.734.ckpt")
+#     # teacher_model.load_state_dict(checkpoint['state_dict'], strict=False)
 
-    # teacher_model = TeacherStudentKIIM.load_from_checkpoint("/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/WA/Supervised/20/result_stats/checkpoints/epoch=13-val_iou_macro_irr=0.594.ckpt", strict=False, **cfg.model)
-#     # student_model = KIIM(...)
-    # model = TeacherStudentKIIM(teacher=teacher_model.student, student=teacher_model.student, num_classes=cfg.model.num_classes, alpha=cfg.train.alpha,alpha_decay=cfg.train.alpha_decay)
+#     # teacher_model = TeacherStudentKIIM.load_from_checkpoint("/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/WA/Supervised/20/result_stats/checkpoints/epoch=13-val_iou_macro_irr=0.594.ckpt", strict=False, **cfg.model)
+# #     # student_model = KIIM(...)
+#     # model = TeacherStudentKIIM(teacher=teacher_model.student, student=teacher_model.student, num_classes=cfg.model.num_classes, alpha=cfg.train.alpha,alpha_decay=cfg.train.alpha_decay)
     
-    model = TeacherStudentKIIM(teacher=student_model, student=teacher_model, num_classes=cfg.model.num_classes, alpha=cfg.train.alpha,alpha_decay=cfg.train.alpha_decay)
+    model = TeacherModel(**cfg)
     
     
-#     # print(model)
+    print(model)
 
 
     if len(cfg.train.devices) > 1:
@@ -75,7 +77,7 @@ def train(cfg: DictConfig) -> None:
             )
         )
 
-    strategy = DDPStrategy(find_unused_parameters=True) if len(cfg.train.devices) > 1 else 'ddp'
+    strategy = DDPStrategy(find_unused_parameters=False) if len(cfg.train.devices) > 1 else 'ddp'
 
     trainer = pl.Trainer(
         max_epochs=cfg.train.max_epochs,

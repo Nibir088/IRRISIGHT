@@ -17,6 +17,8 @@ from models.BaseModel import KIIM
 from models.TeacherStudentModel_v1 import TeacherStudentKIIM
 from utils.train_config import save_experiment_config
 import torch
+torch.set_float32_matmul_precision('high')
+
 @hydra.main(config_path="/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/KIIM/config", config_name="Teacher-Training", version_base="1.2")
 def train(cfg: DictConfig) -> None:
     print(f"Running on GPUs: {cfg.train.devices}")

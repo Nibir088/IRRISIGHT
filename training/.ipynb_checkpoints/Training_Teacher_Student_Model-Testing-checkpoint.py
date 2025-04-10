@@ -25,14 +25,14 @@ def evaluate(cfg: DictConfig) -> None:
     student_model = KIIM(**cfg.model)
 
     # Load the trained model checkpoint
-    checkpoint_path = "/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/CO/UnSupervised/20/result_stats/checkpoints/epoch=11-val_iou_macro_irr=0.877.ckpt"
+    checkpoint_path = "/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/wo_WA/Supervised/80/result_stats/checkpoints/epoch=7-val_iou_macro_irr=0.867.ckpt"
     # checkpoint = torch.load(checkpoint_path)
     # student_model.load_state_dict(checkpoint['state_dict'], strict=False)
     # print(f"Loaded model from checkpoint: {checkpoint_path}")
     
     # model = TeacherStudentKIIM(teacher=student_model, student=student_model, num_classes=cfg.model.num_classes)
     
-    model = TeacherStudentKIIM.load_from_checkpoint(checkpoint_path)
+    model = TeacherStudentKIIM.load_from_checkpoint(checkpoint_path) #, map_location="cuda:0"
 
     # Set the model to evaluation mode
     model.eval()
