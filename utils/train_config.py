@@ -21,7 +21,7 @@ def save_experiment_config(
         },
         "model": {
             "name": model.__class__.__name__,
-            "hparams": OmegaConf.to_container(cfg.model, resolve=True),
+            "hparams": OmegaConf.to_container(cfg.studentmodel, resolve=True),
             "num_parameters": sum(p.numel() for p in model.parameters()),
             "trainable_parameters": sum(p.numel() for p in model.parameters() if p.requires_grad)
         },
@@ -50,9 +50,9 @@ def save_experiment_config(
             "patience": cfg.train.patience if hasattr(cfg.train, 'patience') else None
         },
         "optimization": {
-            "optimizer": cfg.model.get('optimizer_name', 'AdamW'),
-            "learning_rate": cfg.model.get('learning_rate', None),
-            "weight_decay": cfg.model.get('weight_decay', None)
+            "optimizer": cfg.studentmodel.get('optimizer_name', 'AdamW'),
+            "learning_rate": cfg.studentmodel.get('learning_rate', None),
+            "weight_decay": cfg.studentmodel.get('weight_decay', None)
         }
     }
     

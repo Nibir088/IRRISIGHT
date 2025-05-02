@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 import torch
-from data.dataset import ImageMaskDataset
+from data.dataset_v2 import ImageMaskDataset
 import json
 import yaml
     
@@ -18,8 +18,7 @@ class IrrigationDataModule(pl.LightningDataModule):
 
     def __init__(
         self,
-        config: Dict[str, Any],
-        merge_train_valid: Optional[bool] = False,
+        config: Dict[str, Any]
     ):
         """
         Initialize the DataModule.
@@ -30,23 +29,16 @@ class IrrigationDataModule(pl.LightningDataModule):
         """
         super().__init__()
         self.config = config
-        self.merge = merge_train_valid
 
         # Extract configuration parameters
         self.dataset_params = self.config.get('dataset', {})
-        self.dataloader_params = self.config.get('dataloader', {})
+        # self.dataloader_params = self.config.get('dataloader', {})
         
 
 
         with open(self.dataset_params.get('data_file_base_name'), 'r') as file:
             self.data_file_paths = yaml.safe_load(file)  # Load YAML instead of JSON
 
-        # self.data_file_paths = self.data_file[self.dataset_params.get('data_file_index')]
-        # self.data_file_paths = self.data_file[self.dataset_params.get('data_file_index')]
-
-
-        # self.data_file = self.dataset_params.get('data_file_base_name')
-        # self.data_file_paths = self.dataset_params.get('data_file_index', {})
 
         # Initialize dataset attributes
         self.train_dataset = None
@@ -61,91 +53,45 @@ class IrrigationDataModule(pl.LightningDataModule):
             stage: Either 'fit', 'test', or None
         """
         if stage == 'fit' or stage is None:
-            patches = list(self.data_file_paths['train']['patches'].values())
-            masks = list(self.data_file_paths['train']['masks'].values())
-
-            train_len = int(len(patches) * self.dataset_params.get('train_size', 20) /100.0)
-            val_len = int(len(patches) * 80.0 /100.0)
-            # print(train_len, len(patches))
-
-            # train_len = len(self.data_file_paths['train']['patches'])
-            if self.dataset_params.get('is_supervised', True):
-                
-                print(train_len)
-                self.train_dataset = ImageMaskDataset(
-                    image_paths = patches[:train_len],
-                    mask_paths = masks[:train_len],
-                    states=self.dataset_params.get('states', []),
-                    image_size=self.dataset_params.get('image_size', (256, 256)),
-                    transform=self.dataset_params.get('transform', False),
-                    gamma_value=self.dataset_params.get('gamma_value', 1.3),
-                    is_binary=self.dataset_params.get('is_binary', False),
-                    image_types=self.dataset_params.get('image_types', ['image']),
-                    agri_indices=self.dataset_params.get('agri_indices', []),
-                    source = self.dataset_params.get('source', 'landsat'),
-                    is_supervised = self.dataset_params.get('is_supervised', False)
-                )
-            else:
-                self.test_dataset = {}
-                states = self.dataset_params.get('states', [])
-                # states = ['FL','UT']
-                image_paths = patches
-                mask_paths = masks
-                for state in states:
-                    data_file_paths = self.data_file_paths
-                    image_paths.extend(list(data_file_paths['test']['patches'].values()))
-                    mask_paths.extend(list(data_file_paths['test']['masks'].values()))
-                    
-                self.train_dataset = ImageMaskDataset(
-                    image_paths = image_paths,
-                    mask_paths = mask_paths,
-                    states=self.dataset_params.get('states', []),
-                    image_size=self.dataset_params.get('image_size', (256, 256)),
-                    transform=self.dataset_params.get('transform', False),
-                    gamma_value=self.dataset_params.get('gamma_value', 1.3),
-                    is_binary=self.dataset_params.get('is_binary', False),
-                    image_types=self.dataset_params.get('image_types', ['image']),
-                    agri_indices=self.dataset_params.get('agri_indices', []),
-                    source = self.dataset_params.get('source', 'landsat'),
-                    is_supervised = self.dataset_params.get('is_supervised', False),
-                    training_size = train_len
-                )
-            self.val_dataset = ImageMaskDataset(
-                    image_paths = patches[val_len:],
-                    mask_paths = masks[val_len:],
-                    states=self.dataset_params.get('states', []),
-                    image_size=self.dataset_params.get('image_size', (256, 256)),
-                    transform=self.dataset_params.get('transform', False),
-                    gamma_value=self.dataset_params.get('gamma_value', 1.3),
-                    is_binary=self.dataset_params.get('is_binary', False),
-                    image_types=self.dataset_params.get('image_types', ['image']),
-                    agri_indices=self.dataset_params.get('agri_indices', []),
-                    source = self.dataset_params.get('source', 'landsat')
+            self.train_dataset = ImageMaskDataset(
+                data_dir = self.dataset_params.get('data_dir', ''),
+                states = self.dataset_params.get('states', []),
+                image_shape = self.dataset_params.get('image_shape', (224, 224)),
+                transform = self.dataset_params.get('transform', False),
+                gamma_value = self.dataset_params.get('gamma_value', 1.3),
+                label_type = self.dataset_params.get('label_type', 'irrigation'),
+                vision_indices = self.dataset_params.get('vision_indices', ['image']),
+                train_type = self.dataset_params.get('train_type', 'cross-state'), 
+                 split = 'train'
             )
-                
-            # if self.merge:
-            #     self.train_dataset = torch.utils.data.ConcatDataset([self.train_dataset, self.val_dataset])
+            
+            self.val_dataset = ImageMaskDataset(
+                data_dir = self.dataset_params.get('data_dir', ''),
+                states = self.dataset_params.get('states', []),
+                image_shape = self.dataset_params.get('image_size', (224, 224)),
+                transform = self.dataset_params.get('transform', False),
+                gamma_value = self.dataset_params.get('gamma_value', 1.3),
+                label_type = self.dataset_params.get('label_type', 'irrigation'),
+                vision_indices = self.dataset_params.get('vision_indices', ['image']),
+                train_type = self.dataset_params.get('train_type', 'cross-state'), 
+                 split = 'val'
+            )
+            
         
         if (stage == 'test' or stage is None):
             
-            self.test_dataset = {}
-            states = self.dataset_params.get('states', [])
-            # states = ['FL','UT']
-            for state in states:
-                data_file_paths = self.data_file_paths
-                test_data = ImageMaskDataset(
-                    image_paths = data_file_paths['test']['patches'],
-                    mask_paths = data_file_paths['test']['masks'],
-                    states=states,
-                    image_size=self.dataset_params.get('image_size', (256, 256)),
-                    transform=self.dataset_params.get('transform', False),
-                    gamma_value=self.dataset_params.get('gamma_value', 1.3),
-                    is_binary=self.dataset_params.get('is_binary', False),
-                    image_types=self.dataset_params.get('image_types', ['image']),
-                    agri_indices=self.dataset_params.get('agri_indices', []),
-                    source=self.dataset_params.get('source', 'landsat')
-                )
-                self.test_dataset[state] = test_data
+            self.val_dataset = ImageMaskDataset(
+                data_dir = self.dataset_params.get('data_dir', ''),
+                states = self.dataset_params.get('states', []),
+                image_shape = self.dataset_params.get('image_size', (224, 224)),
+                transform = self.dataset_params.get('transform', False),
+                gamma_value = self.dataset_params.get('gamma_value', 1.3),
+                label_type = self.dataset_params.get('label_type', 'irrigation'),
+                vision_indices = self.dataset_params.get('vision_indices', ['image']),
+                train_type = self.dataset_params.get('train_type', 'cross-state'), 
+                 split = 'test'
+            )
+            
 
     def _get_dataloader_kwargs(self) -> Dict[str, Any]:
         """Get keyword arguments for DataLoader from config."""
@@ -169,10 +115,11 @@ class IrrigationDataModule(pl.LightningDataModule):
 
     def test_dataloader(self) -> Dict[str, DataLoader]:
         """Return the test DataLoaders for each state."""
-        if not self.test_dataset:
-            raise ValueError("Test datasets are not initialized or are empty.")
+        return DataLoader(self.val_dataset, **self._get_dataloader_kwargs())
+#         if not self.test_dataset:
+#             raise ValueError("Test datasets are not initialized or are empty.")
 
-        return {
-            state: DataLoader(dataset, **self._get_dataloader_kwargs())
-            for state, dataset in self.test_dataset.items()
-        }
+#         return {
+#             state: DataLoader(dataset, **self._get_dataloader_kwargs())
+#             for state, dataset in self.test_dataset.items()
+#         }

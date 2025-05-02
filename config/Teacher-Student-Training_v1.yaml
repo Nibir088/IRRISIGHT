@@ -1,20 +1,18 @@
 defaults:
   - _self_  # Changed *self* to _self_ as it's the correct syntax
   
-# config_dir: "/project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/KIIM/config/multigpu-state-training-baseline-Nibir.yaml"
-
 general:
   num_classes: 4
   learning_rate: 2e-4
 eval:
-  checkpoint_path: "/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/baseline/wo_UT/Supervised/80/result_stats/checkpoints/epoch=15-val_iou_macro_irr=0.744.ckpt"
+  checkpoint_path: '/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/baseline/wo_AZ/UnSupervised/80/result_stats/checkpoints/epoch=7-val_iou_macro_irr=0.814.ckpt'
 train:
   seed: 88
   # save_dir: "experiments_baseline_CO"
   save_model: true
-  max_epochs: 20
+  max_epochs: 15
   # batch_size: 16
-  learning_rate: 2e-4
+  learning_rate: ${general.learning_rate}
   weight_decay: 1e-4
   early_stopping: true
   patience: 20
@@ -34,10 +32,10 @@ train:
   
   
 dataset:
-  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/KDD-25-Data-Track/train_test_split/Sentinel/30p_wo_UT_combined.yaml"
+  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/KDD-25-Data-Track/train_test_split/Sentinel/30p_wo_WA_combined.yaml"
   crop_matrices_path: "/project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/Data-Collection/matrix"
-  data_file_index: "UT"
-  states: ["UT"]  # Added quotes for consistency
+  data_file_index: "WA"
+  states: ["WA"]  # Added quotes for consistency
   image_size: [224, 224]  # Changed tuple notation to list
   transform: false
   gamma_value: 1.5
@@ -45,25 +43,24 @@ dataset:
   agri_indices: ["ndvi", "ndti", "ndwi",'evi','gndvi','savi','msavi','rvi','cigreen','pri','osavi','wdrvi']  # Added quotes and spaces after commas
   source: "sentinel"
   train_size: 80
-  is_supervised: true
+  is_supervised: false
   
 dataloader:
   batch_size: 16
-  num_workers: 6
+  num_workers: 8
   pin_memory: true
   
 teachermodel:
-  target: 'true_mask'
   BaseModel:
     use_pretrained_module: true
-    use_attention_module: false
+    use_attention_module: true
     use_multimodal_imagery_module: true
-    use_projection_module: false
+    use_projection_module: true
     num_classes: ${general.num_classes}
     loss_config:
-      ce_weight: 1.0
-      dice_weight: 0.0
-      focal_weight: 0.0
+      ce_weight: 0.0
+      dice_weight: 0.4
+      focal_weight: 0.6
       kg_weight: 0.0
     
   PretrainedModule:
@@ -77,7 +74,7 @@ teachermodel:
     decoder_attention_type: 'None' ## doesn't matter
     activation: 'None' ## doesn't matter
     weights: 'landsat' ## doesn't matter
-    pretrained: true 
+    pretrained: true
     attention_type: "cross"  ## possible options self, cross, stream, none
     task: "segmentation"    ## segmentation or classification
   AttentionModule:
@@ -104,34 +101,58 @@ teachermodel:
     use_raw_spatial_priors: false
   # PretrainedBackbone:
     
+
+studentmodel:
+  BaseModel:
+    use_pretrained_module: true
+    use_attention_module: false
+    use_multimodal_imagery_module: true
+    use_projection_module: false
+    num_classes: ${general.num_classes}
+    loss_config:
+      ce_weight: 0.0
+      dice_weight: 0.4
+      focal_weight: 0.6
+      kg_weight: 0.0
     
+  PretrainedModule:
+    model_name: 'swin'
+    in_channels: 15 ## sum of MultimodalImageryModule channel
+    num_classes: ${general.num_classes} # ${model.BaseModel.num_classes}
+    hidden_dim: 16  ### doesn't matter
+    encoder_name: "resnet34"  ## doesn't matter
+    encoder_weights: "imagenet" ## doesn't matter
+    encoder_depth: 5 ## doesn't matter
+    decoder_attention_type: 'None' ## doesn't matter
+    activation: 'None' ## doesn't matter
+    weights: 'landsat' ## doesn't matter
+    attention_type: "cross"  ## possible options self, cross, stream, none
+    task: "segmentation"    ## segmentation or classification
+    pretrained: true
+  AttentionModule:
+    in_channels: 1
+    hidden_dim: 16
+  MultimodalImageryModule:
+    use_rgb: true
+    use_ndvi: true
+    use_ndwi: true
+    use_ndti: true
+    use_evi: true
+    use_gndvi: true
+    use_savi: true
+    use_msavi: true
+    use_rvi: true
+    use_cigreen: true
+    use_pri: true
+    use_osavi: true
+    use_wdrvi: true
+    use_vegetation: true
+  ProjectionModule:
+    num_classes: ${general.num_classes} #${model.BaseModel.num_classes}
+    in_channels: 21
+    use_raw_spatial_priors: false
+  # PretrainedBackbone:
 
-
-
-# model:
-#   backbone_name: "swin"
-#   encoder_name: "resnet50"
-#   num_classes: 4
-#   learning_rate: 1e-4
-#   use_attention: false
-#   use_projection: false
-#   use_rgb: true
-#   use_ndvi: true
-#   use_ndwi: true
-#   use_ndti: true
-#   pretrained_hidden_dim: 16
-#   attention_hidden_dim: 16
-#   gamma: 5.0
-#   weight_decay: 1e-4
-#   attention_type: "cross"
-#   loss_config:
-#     use_ce: false
-#     ce_weight: 0.0      # Fixed indentation and removed curly braces
-#     dice_weight: 0.4
-#     focal_weight: 0.6
-#     kg_weight: 0.0
-#     stream_weight: 0.0
-        
 logging:
   use_wandb: true
   project_name: "irrigation-segmentation (IJCAI)"
@@ -171,7 +192,7 @@ hydra:
   job:
     chdir: True
   run:
-      dir: /project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/baseline/wo_${dataset.data_file_index}/Supervised/${dataset.train_size}
+      dir: /project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/baseline/wo_${dataset.data_file_index}/UnSupervised/${dataset.train_size}
       # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/temp/test
     # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/outputs-KIIM-StateWise/${dataset.data_file_index}/2025-01-29/03-36-28
     # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/temp

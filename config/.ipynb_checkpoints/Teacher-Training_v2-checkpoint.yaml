@@ -6,19 +6,20 @@ defaults:
 general:
   num_classes: 4
   learning_rate: 2e-4
-
+eval:
+  checkpoint_path: "/project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/baseline/wo_UT/Supervised/80/result_stats/checkpoints/epoch=15-val_iou_macro_irr=0.744.ckpt"
 train:
   seed: 88
   # save_dir: "experiments_baseline_CO"
   save_model: true
-  max_epochs: 10
+  max_epochs: 20
   # batch_size: 16
   learning_rate: 2e-4
   weight_decay: 1e-4
   early_stopping: true
   patience: 20
   accelerator: "gpu"
-  devices: [0,1,2,3]
+  devices: [0,1,2]
   strategy: "ddp"
   gradient_clip_val: 1.0
   accumulate_grad_batches: 4
@@ -33,10 +34,10 @@ train:
   
   
 dataset:
-  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/KDD-25-Data-Track/train_test_split/Sentinel/wo_AZ_combined.yaml"
+  data_file_base_name: "/project/biocomplexity/wyr6fx(Nibir)/KDD-25-Data-Track/train_test_split/Sentinel/30p_wo_UT_combined.yaml"
   crop_matrices_path: "/project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/Data-Collection/matrix"
-  data_file_index: "AZ"
-  states: ["AZ"]  # Added quotes for consistency
+  data_file_index: "UT"
+  states: ["UT"]  # Added quotes for consistency
   image_size: [224, 224]  # Changed tuple notation to list
   transform: false
   gamma_value: 1.5
@@ -47,11 +48,12 @@ dataset:
   is_supervised: true
   
 dataloader:
-  batch_size: 32
-  num_workers: 4
+  batch_size: 16
+  num_workers: 6
   pin_memory: true
   
-model:
+teachermodel:
+  target: 'true_mask'
   BaseModel:
     use_pretrained_module: true
     use_attention_module: false

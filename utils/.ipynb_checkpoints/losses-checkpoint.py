@@ -38,9 +38,9 @@ class FocalLoss(nn.Module):
         # weights = [0.044, 0.135, 0.056, 4.00] # FL
         # weights = [1,1,1,5] # multistate
         # weights = [1,1,1,10]
-        weights = [1,1,1,1]
-        weights_tensor = torch.FloatTensor(weights).cuda()
-        ce_loss = F.cross_entropy(pred, target, reduction='none',weight=weights_tensor)
+        # weights = [1,1,1,1]
+        # weights_tensor = torch.FloatTensor(weights).cuda()
+        ce_loss = F.cross_entropy(pred, target, reduction='none') #,weight=weights_tensor
         pt = torch.exp(-ce_loss)
         focal_loss = (1 - pt) ** self.gamma * ce_loss
         # print(focal_loss.shape, is_label.shape)
@@ -69,7 +69,7 @@ class DiceLoss(nn.Module):
         
         
         num_classes = predictions.shape[1]
-        loss_mask = ((land_mask == 1) | (land_mask == 2)).unsqueeze(1).float()
+        loss_mask = land_mask.unsqueeze(1).float()
         # print('Prediction, Loss: ',predictions.shape, land_mask.shape)
         predictions = predictions * loss_mask
         
