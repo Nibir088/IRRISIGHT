@@ -39,7 +39,7 @@ lightning_project/
    ```
 
 ## Usage
-1. Modify the configuration in `config/config.yaml`
+1. Modify the configuration in `config/supervised_training_gpu.yaml`
 2. Run training:
    ```bash
    bash training_v2/Training_Teacher_Model-gpu.py
