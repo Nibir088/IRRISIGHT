@@ -119,18 +119,18 @@ python training_v2/Evaluate_Unlabeled.py +experiment=eval_unlabeled
 
 > ⚠️ Add figures to your GitHub `/assets/` folder and update paths below.
 
-![Dataset Coverage](assets/figure_coverage.png)  
-*Figure 1: Spatial coverage of IRRISIGHT dataset.*
 
-![Patch Example](assets/figure_sample_patch.png)  
-*Figure 2: Sample data patch with multimodal inputs.*
+![Patch Example](assets/Sample_Patch_2.png)  
+*Figure 1: Sample data patch with multimodal inputs.*
 
-![Processing Pipeline](assets/figure_pipeline.png)  
-*Figure 3: End-to-end data processing pipeline.*
+![Processing Pipeline](assets/Data_Processing.png)  
+*Figure 2: End-to-end data processing pipeline.*
 
-![Confidence Scores](assets/figure_confidence_boxplot.png)  
-*Figure 4: Model confidence across states.*
+![Confidence Scores](assets/confidence_score.png)  
+*Figure 3: Model confidence across states.*
 
+![Dataset Coverage](assets/Evaluation.png)  
+*Figure 4: Evaluation Framework.*
 
 ---
 
