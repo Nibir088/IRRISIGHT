@@ -42,7 +42,7 @@ lightning_project/
 1. Modify the configuration in `config/config.yaml`
 2. Run training:
    ```bash
-   bash scripts/run_training.sh
+   bash training_v2/Training_Teacher_Model-gpu.py
    ```
 
 ## License
