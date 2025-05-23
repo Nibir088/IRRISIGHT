@@ -1,4 +1,4 @@
-# PyTorch Lightning Project
+# IRRISIGHT
 
 ## Project Structure
 ```
