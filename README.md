@@ -27,9 +27,9 @@ Each state directory (e.g., `Arizona/`) contains:
 To load:
 ```python
 from datasets import load_dataset
-ds = load_dataset("OBH30/IRRISIGHT", split="train", streaming=True)
+ds = load_dataset("NibirMandal/IRRISIGHT", split="train", streaming=True, data_dir="Georgia")
 sample = next(iter(ds))
-print(sample["image_path"], sample["text_prompt"])
+print(sample["__key__"], sample["meta.json"])
 ```
 
 ---
