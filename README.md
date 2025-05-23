@@ -117,20 +117,17 @@ python training_v2/Evaluate_Unlabeled.py +experiment=eval_unlabeled
 
 ## 📸 Dataset Visuals
 
-> ⚠️ Add figures to your GitHub `/assets/` folder and update paths below.
-
-
 ![Patch Example](assets/Sample_Patch_2.png)  
-*Figure 1: Sample data patch with multimodal inputs.*
+**Figure 1: Sample data patch with multimodal inputs.**
 
 ![Processing Pipeline](assets/Data_Processing.png)  
-*Figure 2: End-to-end data processing pipeline.*
+**Figure 2: End-to-end data processing pipeline.**
 
 ![Confidence Scores](assets/confidence_score.png)  
-*Figure 3: Model confidence across states.*
+**Figure 3: Model confidence across states.**
 
 ![Dataset Coverage](assets/Evaluation.png)  
-*Figure 4: Evaluation Framework.*
+**Figure 4: Evaluation Framework.**
 
 ---
 
