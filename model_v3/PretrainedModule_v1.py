@@ -9,6 +9,7 @@ from model_v3.ViTBackbone import ViTSegmentation
 from model_v3.SwinTransformer import SwinUnet
 from model_v3.FarSegModel import FarSegModel
 from model_v3.KIIM import KIIM
+from model_v3.SAM import SAMSegmentation
 
 
 def find_model(
@@ -21,7 +22,8 @@ def find_model(
     activation: Optional[str] = None,
     hidden_dim: int = 16,
     attention_type: str = "self",
-    task: str = "segmentation"
+    task: str = "segmentation",
+    freeze_model: bool = False
 ) -> nn.Module:
     """
     Create and return a segmentation model instance.
@@ -53,6 +55,12 @@ def find_model(
             attention_type=attention_type,
             task=task
         )
+    
+    if name.lower() == 'sam':
+        return SAMSegmentation(
+            num_classes=classes,
+            freeze_model = freeze_model
+        )
 
     # Set default decoder_channels if not provided
     if decoder_channels is None:
@@ -62,6 +70,7 @@ def find_model(
         'unet': smp.Unet,
         'fpn': smp.FPN,
         'deepv3+': smp.DeepLabV3Plus,
+        'segformer': smp.Segformer
     }
 
     name = name.lower()
@@ -72,7 +81,7 @@ def find_model(
             encoder_weights=encoder_weights,
             in_channels=in_channels,
             classes=classes,
-            decoder_channels=decoder_channels,
+            # decoder_channels=decoder_channels,
             activation=activation
         )
     elif name == 'vit':
@@ -128,6 +137,7 @@ class PretrainedModel(nn.Module):
         activation: Optional[str] = None,
         attention_type: str = "self",
         task: str = "segmentation",
+        freeze_model: bool = True
     ):
         super().__init__()
         self.model = find_model(
@@ -139,7 +149,8 @@ class PretrainedModel(nn.Module):
             hidden_dim=hidden_dim,
             activation=activation,
             attention_type=attention_type,
-            task=task
+            task=task,
+            freeze_model = freeze_model
         )
 
     def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:

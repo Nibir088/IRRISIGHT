@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Optional, Any
-from models_v3.BaseModel import *
+from model_v3.BaseModel import *
 from utils.metrics import *
 
 class TeacherModel(pl.LightningModule):
@@ -142,6 +142,34 @@ class TeacherModel(pl.LightningModule):
             batch_idx (int): Index of the batch
         """
         outputs = self.teacher(batch)
+        
+#         self.cfg.unsupervised:
+#             multiclass_preds = torch.argmax(outputs["logits"], dim=1).cpu().numpy()  # [B, H, W]
+#             binary_preds = (multiclass_preds > 0).astype("uint8")
+
+#             polygons = [wkt.loads(p) for p in batch["polygon"]]  # convert from string to shapely
+
+#             for i, polygon in enumerate(polygons):
+#                 pred_mask = binary_preds[i]
+#                 height, width = pred_mask.shape
+#                 minx, miny, maxx, maxy = polygon.bounds
+#                 transform = from_bounds(minx, miny, maxx, maxy, width, height)
+
+#                 out_path = f"predictions/test_{batch_idx}_{i}.tif"
+#                 os.makedirs(os.path.dirname(out_path), exist_ok=True)
+
+#                 with rasterio.open(
+#                     out_path, "w",
+#                     driver="GTiff",
+#                     height=height,
+#                     width=width,
+#                     count=1,
+#                     dtype="uint8",
+#                     crs=CRS.from_epsg(5070),
+#                     transform=transform
+#                 ) as dst:
+#                     dst.write(pred_mask, 1)
+#                 return 
 
         labeled_loss = self.teacher.compute_loss(
             outputs['logits'],

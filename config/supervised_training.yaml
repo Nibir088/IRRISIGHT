@@ -1,12 +1,14 @@
 defaults:
   - _self_  
 general:
-  num_classes: 2
+  num_classes: 4
   learning_rate: 1e-4
   
 dataset:
   data_dir: '/project/biocomplexity/wyr6fx(Nibir)/NeurIPS_irrigation_data/Train-Test-Split'
-  states: [('Arizona',1)]
+  states:
+      - [Arizona, 0.1]
+      # - [Florida, 0.1]
   image_shape: [224,224]
   transform: false
   gamma_value: 1.5
@@ -17,19 +19,18 @@ train:
   seed: 88
   # save_dir: "experiments_baseline_CO"
   save_model: true
-  max_epochs: 50
-  # batch_size: 16
+  max_epochs: 1
   learning_rate: ${general.learning_rate}
   weight_decay: 1e-4
   early_stopping: true
   patience: 20
-  accelerator: "gpu"
-  devices: [0,1,2,3]
+  accelerator: "cpu"
+  devices: 1 #[0,1,2,3]
   strategy: "ddp"
   gradient_clip_val: 1.0
   accumulate_grad_batches: 4
   check_val_every_n_epoch: 1
-  precision: 16
+  precision: 16-mixed 
   mode: "max"
   monitor: "val_iou_macro_irr"
   verbose: true
@@ -38,15 +39,15 @@ train:
   alpha_decay: 1 # 0.99
 
 dataloader:
-  batch_size: 8
+  batch_size: 16
   num_workers: 4
   pin_memory: true
 
 model:
   use_rgb: true
-  use_vegetation: true
-  use_land_mask: true
-  use_crop_mask: true
+  use_vegetation: false
+  use_land_mask: false
+  use_crop_mask: false
 
 teachermodel:
   target: 'irr_mask'
@@ -55,32 +56,37 @@ teachermodel:
     use_attention_module: false
     use_multimodal_imagery_module: true
     use_projection_module: false
+    use_vlm_module: false
     num_classes: ${general.num_classes}
     loss_config:
       ce_weight: 1.0
       dice_weight: 0.0
       focal_weight: 0.0
       kg_weight: 0.0
+  VLMModule:
+    input_channels: 17
+    num_classes: ${general.num_classes}
+    vlm_type: "blip2" #Literal["clip", "blip2", "florence", "git"] = 
+    freeze_model: false
     
   PretrainedModule:
-    model_name: 'swin'
+    model_name: 'sam'
     in_channels: 17 ## sum of MultimodalImageryModule channel
     num_classes: ${general.num_classes} # ${model.BaseModel.num_classes}
     hidden_dim: 7  ### doesn't matter
-    encoder_name: "resnet34"  ## doesn't matter
-    encoder_weights: "imagenet" ## doesn't matter
-    encoder_depth: 5 ## doesn't matter
-    decoder_attention_type: 'None' ## doesn't matter
-    activation: 'None' ## doesn't matter
+    encoder_name: "swin"  ### for kiim it should be swin
+    encoder_weights: "imagenet" 
+    activation: 'sigmoid' 
     task: "segmentation"    ## segmentation or classification
+    freeze_model: true
   AttentionModule:
     in_channels: 1
     hidden_dim: 16
   MultimodalImageryModule:
     use_rgb: true
-    use_land_mask: true
-    use_crop_mask: true
-    use_vegetation: true
+    use_land_mask: false
+    use_crop_mask: false
+    use_vegetation: false
   ProjectionModule:
     num_classes: ${general.num_classes} #${model.BaseModel.num_classes}
 
@@ -123,7 +129,7 @@ hydra:
   job:
     chdir: True
   run:
-      dir: /project/biocomplexity/wyr6fx(Nibir)/IrrigationMapping/baseline_${teachermodel.target}/wo_${dataset.data_file_index}/Supervised/${dataset.train_size}
+      dir: /project/biocomplexity/wyr6fx(Nibir)/NeurIPS_Irrigation_Mapping_Model/Results
       # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/temp/test
     # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/outputs-KIIM-StateWise/${dataset.data_file_index}/2025-01-29/03-36-28
     # dir: /project/biocomplexity/wyr6fx(Nibir)/IJCAI-25_Irrigation_Mapping/Pytorch-Lightening/temp

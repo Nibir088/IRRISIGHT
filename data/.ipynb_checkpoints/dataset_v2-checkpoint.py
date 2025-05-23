@@ -7,6 +7,8 @@ import torch
 import numpy as np
 import rasterio
 import pandas as pd
+import re
+from shapely.geometry import box
 
 class ImageProcessor:
     """
@@ -125,6 +127,10 @@ class ImageProcessor:
             crop_mask = src.read(11).astype(np.uint8)
             irr_mask = src.read(12).astype(np.uint8) if src.count >= 12 else None
             subirr_mask = src.read(13).astype(np.uint8) if src.count >= 13 else None
+            
+            bounds = src.bounds  # (left, bottom, right, top)
+            polygon = box(*bounds)
+            crs = src.crs
 
         return {
             'rgb': rgb,
@@ -133,7 +139,9 @@ class ImageProcessor:
             'land_mask': land_mask,
             'crop_mask': crop_mask,
             'irr_mask': irr_mask,
-            'subirr_mask': subirr_mask
+            'subirr_mask': subirr_mask,
+            'polygon': polygon,
+            'crs': crs
         }
 class TextPromptProcessor:
     """
@@ -178,14 +186,12 @@ class TextPromptProcessor:
         FileNotFoundError: if the metadata CSV file is missing
         ValueError: if the patch_path is not found in the metadata CSV
         """
-        # Determine metadata path
         base_dir = os.path.dirname(patch_path)
         metadata_path = os.path.join(base_dir, 'patch_metadata.csv')
 
         if not os.path.exists(metadata_path):
             raise FileNotFoundError(f"Metadata file not found: {metadata_path}")
 
-        # Load metadata and match the current patch
         df = pd.read_csv(metadata_path)
         matched = df[df['patch_path'] == patch_path]
 
@@ -194,40 +200,85 @@ class TextPromptProcessor:
 
         row = matched.iloc[0]
 
-        # Extract relevant metadata fields
-        soil_info = row['soil_info']           # already in prompt-ready format
-        county = row['county']                 # e.g., "Maricopa"
-        state = row['state']                   # e.g., "Arizona"
-        et = row['ET']                         # evapotranspiration (mm)
-        precip = row['precipitation']          # precipitation (in)
-        gw = row['groundwater']                # groundwater depth (ft)
-        sw = row['surface_water']              # surface water level (ft)
+        county = row['county']
+        state = row['state']
+        et = row['ET']
+        precip = row['precipitation']
+        gw = row['groundwater']
+        sw = row['surface_water']
+        soil_info = row.get('soil_info', '')
 
-        # Helper for formatting numeric fields
+        # print("\n[RAW SOIL INFO]")
+        # print(soil_info)
+
         def safe_format(val, unit=''):
             return f"{val:.2f}{unit}" if pd.notna(val) else "unknown"
 
-        # Assemble prompt segments
-        prompt_parts = []
+        def parse_soil_prompt_block(text: str) -> dict:
+            return {
+                "components": re.search(r"dominant components: ([^\.]+)", text),
+                "geomorphic": re.search(r"geomorphic setting includes: ([^\.]+)", text),
+                "textures": re.search(r"Soil texture: ([^\.]+)", text),
+                "runoff": re.search(r"<runoff=([^>]+)>", text),
+                "drainage": re.search(r"<drainage=([^>]+)>", text),
+                "hydgrp": re.search(r"<hydgrp=([^>]+)>", text),
+                "hydric": re.search(r"<hydric=([^>]+)>", text),
+                "irrcapcl": re.search(r"<irrcapcl=([^>]+)>", text),
+                "irrcapscl": re.search(r"<irrcapscl=([^>]+)>", text),
+                "awc": re.search(r"AWC=([\d.]+)", text),
+                "ksat": re.search(r"Ksat=([\d.]+)", text),
+                "om": re.search(r"OM=([\d.]+)", text),
+                "dbovendry": re.search(r"BD=([\d.]+)", text),
+                "wtenthbar": re.search(r"1/10 bar: ([\d.]+)", text),
+                "wfifteenbar": re.search(r"15 bar: ([\d.]+)", text),
+            }
 
-        
+        def filter_soil_prompt(full_text: str) -> str:
+            blocks = full_text.split("##")
+            parsed_prompts = []
 
-        # Add location and hydrological context
-        location_text = f"Located in {county} County, {state}."
-        et_text = f"Average evapotranspiration (ET) in July: {safe_format(et, ' mm')}."
-        precip_text = f"Precipitation: {safe_format(precip, ' in')}."
-        gw_text = f"Groundwater depth: {safe_format(gw, ' ft')}."
-        sw_text = f"Surface water level: {safe_format(sw, ' ft')}."
+            for block in blocks:
+                block = block.strip()
+                if not block:
+                    continue
 
-        # Append structured parts
-        prompt_parts.extend([location_text, et_text, precip_text, gw_text, sw_text])
-        
-        # Include soil prompt if available
+                info = {
+                    key: match.group(1).strip() if match else "NA"
+                    for key, match in parse_soil_prompt_block(block).items()
+                }
+
+                parsed_prompts.append(
+                    f"Soil: {info['components']}. "
+                    f"Texture: {info['textures']}. "
+                    f"Geomorph: {info['geomorphic']}. "
+                    f"Irrigation: {info['irrcapcl']}{info['irrcapscl']}. "
+                    f"Runoff: {info['runoff']}. "
+                    f"Drain: {info['drainage']}. "
+                    f"Group: {info['hydgrp']}. "
+                    f"Hydric: {info['hydric']}. "
+                    f"AWC: {info['awc']}. "
+                    f"Ksat: {info['ksat']}. "
+                    f"OM: {info['om']}. "
+                    f"BD: {info['dbovendry']}. "
+                    f"WC10: {info['wtenthbar']}. "
+                    f"WC15: {info['wfifteenbar']}."
+                )
+
+            return " ## ".join(parsed_prompts)
+
+        parts = [
+            f"{county} County, {state}.",
+            f"ET: {safe_format(et, ' mm')}.",
+            f"Precipitation: {safe_format(precip, ' in')}.",
+            f"Ground Water: {safe_format(gw, ' ft')}.",
+            f"Surface Water: {safe_format(sw, ' ft')}."
+        ]
+
         if pd.notna(soil_info) and soil_info.strip().lower() != 'none':
-            prompt_parts.append(soil_info.strip())
+            parts.append(filter_soil_prompt(soil_info))
 
-        # Final prompt string
-        return " ".join(prompt_parts)
+        # Return lowercased result
+        return " ".join(parts).lower()
     
 class ImageMaskDataset(Dataset):
     def __init__(self,
@@ -265,7 +316,8 @@ class ImageMaskDataset(Dataset):
         """
         assert split in ['train', 'val', 'test'], f"Invalid split: {split}"
         self.data_dir = data_dir
-        self.states = states
+        
+        self.states = [tuple(state) for state in states]
         self.image_shape = image_shape
         self.gamma_value = gamma_value
         self.label_type = label_type
@@ -300,6 +352,7 @@ class ImageMaskDataset(Dataset):
         }
         """
         data_paths = []
+        
         for state_name, train_pct in self.states:
             if self.train_type == 'cross-state':
                 file_path = f'{self.data_dir}/split_by_patches_{state_name}.json'
@@ -376,9 +429,10 @@ class ImageMaskDataset(Dataset):
         #   1 = Flood irrigation
         #   2 = Sprinkler irrigation
         #   3 = Drip irrigation
+        H,W = 224, 224
         sample['irr_mask'] = (
             torch.from_numpy(image_dict['irr_mask']).long()
-            if image_dict['irr_mask'] is not None else None
+            if image_dict['irr_mask'] is not None else torch.zeros((H, W), dtype=torch.long)
         )
 
         # ---- Sub-Irrigation Mask ----
@@ -389,7 +443,7 @@ class ImageMaskDataset(Dataset):
         #   2 = Big Gun Sprinkler
         sample['subirr_mask'] = (
             torch.from_numpy(image_dict['subirr_mask']).long()
-            if image_dict['subirr_mask'] is not None else None
+            if image_dict['subirr_mask'] is not None else torch.zeros((H, W), dtype=torch.long)
         )
         if sample['irr_mask']==None:
             sample['is_labeled'] = False
@@ -398,6 +452,8 @@ class ImageMaskDataset(Dataset):
         #  ---- Soil and Location Text Prompt ----
         # Text Prompt generation
         sample['text_prompt'] = TextPromptProcessor.generate_text_prompt_from_patch(path)
+        sample['polygon'] = str(image_dict['polygon'])
+        sample['crs'] = str(image_dict['crs'])
 
         return sample
 import matplotlib.pyplot as plt
@@ -444,36 +500,37 @@ def visualize_sample(sample, index=0):
 
 
 
-# # ==== Dummy Test (you can comment/uncomment to run) ====
-# if __name__ == "__main__":
-#     # Dummy Setup
-#     data_dir = '/project/biocomplexity/wyr6fx(Nibir)/NeurIPS_irrigation_data/Train-Test-Split'
-#     states = [('Arizona', 1.0)]
-#     train_type = 'cross-state'
-#     split = 'train'
+# ==== Dummy Test (you can comment/uncomment to run) ====
+if __name__ == "__main__":
+    # Dummy Setup
+    data_dir = '/project/biocomplexity/wyr6fx(Nibir)/NeurIPS_irrigation_data/Train-Test-Split'
+    states = [('Arizona', 1.0)]
+    train_type = 'cross-state'
+    split = 'train'
 
-#     # Initialize Dataset
-#     dataset = ImageMaskDataset(
-#         data_dir=data_dir,
-#         states=states,
-#         train_type=train_type,
-#         split=split,
-#         transform=True,
-#         vision_indices=['ndvi', 'gndvi', 'image','ndti']
-#     )
+    # Initialize Dataset
+    dataset = ImageMaskDataset(
+        data_dir=data_dir,
+        states=states,
+        train_type=train_type,
+        split=split,
+        transform=True,
+        vision_indices=['ndvi', 'gndvi', 'image','ndti']
+    )
 
-#     print(f"📦 Total samples: {len(dataset)}")
+    print(f"📦 Total samples: {len(dataset)}")
 
-#     # Sample access
-#     sample = dataset[0]
-#     print(f"✅ Sample keys: {list(sample.keys())}")
-#     print(f"🖼️ RGB shape: {sample['rgb'].shape if 'rgb' in sample else 'None'}")
-#     print(f"🌾 Agri indices: {sample['agri_index_names']} | shape: {sample['agri_index'].shape if sample['agri_index'] is not None else 'None'}")
-#     print(f"🗺️ Land mask shape: {sample['land_mask'].shape}")
-#     print(f"🗺️ Crop mask shape: {sample['crop_mask'].shape}")
-#     print(f"🗺️ Land mask shape: {sample['irr_mask'].shape}")
-#     # print(f"🗺️ Land mask shape: {sample['subirr_mask'].shape}")
-#     # ==== Example Usage ====
-#     # sample = dataset[0]  # assuming you already created the dataset
-#     visualize_sample(sample)
+    # Sample access
+    sample = dataset[0]
+    print(f"✅ Sample keys: {list(sample.keys())}")
+    print(f"🖼️ RGB shape: {sample['rgb'].shape if 'rgb' in sample else 'None'}")
+    print(f"🌾 Agri indices: {sample['agri_index_names']} | shape: {sample['agri_index'].shape if sample['agri_index'] is not None else 'None'}")
+    print(f"🗺️ Land mask shape: {sample['land_mask'].shape}")
+    print(f"🗺️ Crop mask shape: {sample['crop_mask'].shape}")
+    print(f"🗺️ Land mask shape: {sample['irr_mask'].shape}")
+    print(sample['text_prompt'])
+    # print(f"🗺️ Land mask shape: {sample['subirr_mask'].shape}")
+    # ==== Example Usage ====
+    # sample = dataset[0]  # assuming you already created the dataset
+    visualize_sample(sample)
 

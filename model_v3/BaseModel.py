@@ -5,11 +5,11 @@ from typing import Dict, Optional, List, Any, Union
 
 from utils.losses import FocalLoss, DiceLoss, KGLoss
 from utils.metrics import *
-from models_v3.AttentionModule import LandUseMask
-from models_v3.PretrainedModule_v1 import PretrainedModel
-from models_v3.MultimodalImageryModule import MIM
-from models_v3.ProjectionModule import ProjectionModule
-
+from model_v3.AttentionModule import LandUseMask
+from model_v3.PretrainedModule_v1 import PretrainedModel
+from model_v3.MultimodalImageryModule import MIM
+from model_v3.ProjectionModule import ProjectionModule
+from model_v3.VLModel_v2 import VLMResUNet
 
 class IRRModel(nn.Module):
     """
@@ -55,6 +55,9 @@ class IRRModel(nn.Module):
         if BaseModel['use_projection_module']:
             cfg = kwargs.get("ProjectionModule", {})
             self.projection_module = ProjectionModule(**cfg)
+        if BaseModel['use_vlm_module']:
+            cfg = kwargs.get("VLMModule", {})
+            self.pretrained_vlm = VLMResUNet(**cfg)
 
         # Loss configuration dictionary
         self.loss_config = BaseModel['loss_config']
@@ -64,6 +67,14 @@ class IRRModel(nn.Module):
         self.use_multimodal_imagery_module = BaseModel['use_multimodal_imagery_module']
         self.use_projection_module = BaseModel['use_projection_module']
         self.use_pretrained_module = BaseModel['use_pretrained_module']
+        self.use_vlm_module = BaseModel['use_vlm_module']
+        
+        if self.use_pretrained_module and self.use_vlm_module:
+            raise RuntimeError("Cannot use both pretrained and VLM module simultaneously. Please disable one.")
+
+        if not(self.use_pretrained_module or self.use_vlm_module):
+            raise RuntimeError("One of pretrained and VLM module should be enabled. Please enable one.")
+
 
         # Loss functions
         self.focal_loss = FocalLoss(gamma=2.0)  # You can parameterize gamma if needed
@@ -109,7 +120,10 @@ class IRRModel(nn.Module):
             features = att_out['features']
 
         # Pretrained classification head
-        outputs = self.pretrained_module(features)
+        if self.use_pretrained_module:
+            outputs = self.pretrained_module(features)
+        elif self.use_vlm_module:
+            outputs = self.pretrained_vlm(features, batch['text_prompt'])
         logits = outputs['logits']
         output_dict['logits'] = logits
 
@@ -118,6 +132,7 @@ class IRRModel(nn.Module):
             proj_out = self.projection_module(logits, batch['crop_mask'])
             output_dict['logits'] = proj_out
             del proj_out  # Free memory
+            
 
         # Softmax predictions (non-differentiable)
         with torch.no_grad():

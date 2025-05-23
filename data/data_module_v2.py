@@ -32,12 +32,10 @@ class IrrigationDataModule(pl.LightningDataModule):
 
         # Extract configuration parameters
         self.dataset_params = self.config.get('dataset', {})
-        # self.dataloader_params = self.config.get('dataloader', {})
+        self.dataloader_params = self.config.get('dataloader', {})
         
 
 
-        with open(self.dataset_params.get('data_file_base_name'), 'r') as file:
-            self.data_file_paths = yaml.safe_load(file)  # Load YAML instead of JSON
 
 
         # Initialize dataset attributes
@@ -80,7 +78,7 @@ class IrrigationDataModule(pl.LightningDataModule):
         
         if (stage == 'test' or stage is None):
             
-            self.val_dataset = ImageMaskDataset(
+            self.test_dataset = ImageMaskDataset(
                 data_dir = self.dataset_params.get('data_dir', ''),
                 states = self.dataset_params.get('states', []),
                 image_shape = self.dataset_params.get('image_size', (224, 224)),
@@ -115,7 +113,7 @@ class IrrigationDataModule(pl.LightningDataModule):
 
     def test_dataloader(self) -> Dict[str, DataLoader]:
         """Return the test DataLoaders for each state."""
-        return DataLoader(self.val_dataset, **self._get_dataloader_kwargs())
+        return DataLoader(self.test_dataset, **self._get_dataloader_kwargs())
 #         if not self.test_dataset:
 #             raise ValueError("Test datasets are not initialized or are empty.")
 

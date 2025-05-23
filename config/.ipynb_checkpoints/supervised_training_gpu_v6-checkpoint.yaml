@@ -1,0 +1,136 @@
+defaults:
+  - _self_  
+general:
+  num_classes: 4
+  learning_rate: 1e-4
+  test_only: false
+  load_pretrained: false
+  save_dir: /project/biocomplexity/wyr6fx(Nibir)/NeurIPS_Irrigation_Mapping_Model/Output_v2/
+  
+dataset:
+  data_dir: '/project/biocomplexity/wyr6fx(Nibir)/NeurIPS_irrigation_data/Train-Test-Split'
+  states:
+      # - [Arizona, 1]
+      - [Colorado, 1]
+      # - [Utah, 1]
+      # - [Georgia, 1]
+      # - [Washington, 1]
+      # - [Florida, 1]
+  image_shape: [224,224]
+  transform: false
+  gamma_value: 1.5
+  label_type: 'irrigation'
+  vision_indices: ['image',"ndvi", "ndti","ndwi",'evi','gndvi','savi','msavi','rvi','cigreen','pri','osavi','wdrvi']
+  train_type: 'holdout'
+
+train:
+  seed: 88
+  # save_dir: "experiments_baseline_CO"
+  save_model: true
+  max_epochs: 20
+  learning_rate: ${general.learning_rate}
+  weight_decay: 1e-4
+  early_stopping: true
+  patience: 20
+  accelerator: "gpu"
+  devices: [0,1,2,3]
+  strategy: "ddp"
+  gradient_clip_val: 1.0
+  accumulate_grad_batches: 4
+  check_val_every_n_epoch: 1
+  precision: 16-mixed 
+  mode: "max"
+  monitor: "val_iou_macro_irr"
+  verbose: true
+  top_k: 1 #how checkpoint value to save
+  alpha: 1 #0.6
+  alpha_decay: 1 # 0.99
+
+dataloader:
+  batch_size: 32
+  num_workers: 4
+  pin_memory: true
+
+
+teachermodel:
+  target: 'irr_mask'
+  BaseModel:
+    use_pretrained_module: false
+    use_attention_module: false
+    use_multimodal_imagery_module: true
+    use_projection_module: false
+    use_vlm_module: true
+    num_classes: ${general.num_classes}
+    loss_config:
+      ce_weight: 1.0
+      dice_weight: 0.0
+      focal_weight: 0.0
+      kg_weight: 0.0
+  VLMModule:
+    input_channels: 5
+    num_classes: ${general.num_classes}
+    vlm_type: "remoteclip" #Literal["clip", "blip2", "florence", "git"] = 
+    freeze_model: false
+    use_text: true
+    
+  PretrainedModule:
+    model_name: 'kiim'
+    in_channels: 17 ## sum of MultimodalImageryModule channel
+    num_classes: ${general.num_classes} # ${model.BaseModel.num_classes}
+    hidden_dim: 7  ### doesn't matter
+    encoder_name: "swin"  ### for kiim it should be swin
+    encoder_weights: "imagenet" 
+    activation: 'sigmoid' 
+    task: "segmentation"    ## segmentation or classification
+    freeze_model: false
+  AttentionModule:
+    in_channels: 1
+    hidden_dim: 16
+  MultimodalImageryModule:
+    use_rgb: true
+    use_land_mask: true
+    use_crop_mask: true
+    use_vegetation: false
+  ProjectionModule:
+    num_classes: ${general.num_classes} #${model.BaseModel.num_classes}
+
+logging:
+  use_wandb: true
+  project_name: "irrigation-segmentation (NeurIPS)"
+  run_name: result_stats
+  save_dir: "logs"
+  
+finetune:
+  checkpoint_path: "experiments/best-model/model.ckpt"  # Path to pretrained model
+  strict: false  # Whether to strictly enforce matching keys when loading
+  freeze_backbone: false  # Whether to freeze backbone layers
+  freeze_encoder: false # Whether to freeze encoder layers
+  learning_rate: 1e-5  # Special learning rate for fine-tuning
+  
+      
+hparam_tuning:
+  enabled: true  # Set to true to enable hyperparameter tuning
+  n_trials: 5   # Number of trials to run
+  timeout_hours: 72  # Maximum duration for optimization (optional)
+  search_space:
+    learning_rate: [1e-4, 2e-4, 1e-3]
+    weight_decay:
+      min: 1e-6
+      max: 1e-4
+    dropout_rate:
+      min: 0.1
+      max: 0.5
+    hidden_size:
+      min: 32
+      max: 32
+      step: 0
+    num_layers:
+      min: 2
+      max: 6
+    batch_size: [16,32]
+      
+hydra:
+  job:
+    chdir: True
+  run:
+      dir: ${find_dir:${dataset.train_type},${general.test_only},${teachermodel.BaseModel.use_pretrained_module},${teachermodel.BaseModel.use_attention_module},${teachermodel.BaseModel.use_projection_module},${teachermodel.BaseModel.use_vlm_module},${teachermodel.VLMModule.vlm_type},${teachermodel.VLMModule.freeze_model},${teachermodel.VLMModule.use_text},${teachermodel.MultimodalImageryModule.use_rgb},${teachermodel.MultimodalImageryModule.use_land_mask},${teachermodel.MultimodalImageryModule.use_crop_mask},${teachermodel.MultimodalImageryModule.use_vegetation},${dataset.states},${teachermodel.PretrainedModule.model_name}}

@@ -23,9 +23,7 @@ def create_backbone(backbone_type="swin"):
           for decoder use (skip connections).
         - Other backbones can be added later by extending the 'else' clause.
     """
-    if backbone_type == "swin":
-        backbone = timm.create_model("swin_base_patch4_window7_224", pretrained=pretrained, features_only=True)
-        return backbone
+    backbone = timm.create_model("swin_base_patch4_window7_224", pretrained=True, features_only=True)
 
     # Placeholder: Add support for other backbones (e.g., resnet50) if needed
     # Example:
@@ -292,7 +290,7 @@ class AttentionBackbone(nn.Module):
         else:
             rgb_input, aux_input = x[:, :3], x[:, 3:]
             aux_input = self.input_proj(aux_input)
-
+            # print(aux_input.shape)
             if self.backbone_type == "swin":
                 rgb_features = [f.permute(0, 3, 1, 2) for f in self.backbone(rgb_input)]
                 aux_features = [f.permute(0, 3, 1, 2) for f in self.backbone(aux_input)]

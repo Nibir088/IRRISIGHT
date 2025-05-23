@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from typing import Dict, Optional, Any
-from models_v2.BaseModel import *
+from model_v3.BaseModel import *
 from utils.metrics import *
 
 class TeacherStudentModel(pl.LightningModule):
