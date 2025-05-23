@@ -39,25 +39,18 @@ print(sample["image_path"], sample["text_prompt"])
 ```
 IRRISIGHT/
 ├── Data/                          # WebDataset .tar files and metadata
-│   ├── Arizona_0000.tar           # Sharded patches (RGB, indices, masks)
-│   └── Arizona/metadata.jsonl     # Associated JSONL metadata
-├── data/                          # WebDataset .tar files and metadata
-│   ├── data_module.py             # custom data module for create batches
-│   └── dataset_v2.py              # custom dataset
-├── config/                        # Hydra configs for training and ablations
+│   ├── Arizona_0000.tar
+│   └── Arizona/metadata.jsonl
+├── data/
+│   ├── data_module.py             # batch preparation
+│   └── dataset_v2.py              # dataset definition
+├── config/
 │   ├── supervised_training_gpu.yaml
-│   └── dumps/                     # Teacher/Student configs
-├── model_v3/                      # Modular model classes (CLIP, RemoteCLIP, BLIP, SAM, KIIM)
-│   └── *.py
-├── training_v2/                   # Scripts for training, label generation, evaluation
-│   ├── Training_Teacher_Model-gpu.py
-│   ├── Label_Generator_Unlabeled.py
-│   └── Evaluate_Unlabeled.py
-├── utils/, data/                  # Utilities and dataloaders
-├── Evaluation.ipynb              # Evaluation notebook
-├── validation.ipynb              # Additional analysis notebook
-├── requirements.txt              # Python packages
-├── environment.yml               # Conda environment file
+│   └── dumps/                     # teacher/student configs
+├── model_v3/                      # CLIP, RemoteCLIP, BLIP, SAM, KIIM, etc.
+├── training_v2/                   # Training, label generation, evaluation
+├── utils/, Evaluation.ipynb, validation.ipynb
+├── requirements.txt, environment.yml
 └── README.md
 ```
 
@@ -117,17 +110,12 @@ python training_v2/Evaluate_Unlabeled.py +experiment=eval_unlabeled
 
 ## 📸 Dataset Visuals
 
-![Patch Example](assets/Sample_Patch_2.png)  
-**Figure 1: Sample data patch with multimodal inputs.**
-
-![Processing Pipeline](assets/Data_Processing.png)  
-**Figure 2: End-to-end data processing pipeline.**
-
-![Confidence Scores](assets/confidence_score.png)  
-**Figure 3: Model confidence across states.**
-
-![Dataset Coverage](assets/Evaluation.png)  
-**Figure 4: Evaluation Framework.**
+| **Figure** | **Description** | **Image** |
+|------------|------------------|-----------|
+| **1** | 🔍 *Sample data patch with multimodal inputs including RGB, vegetation indices, and masks.* | ![Patch Example](assets/Sample_Patch_2.png) |
+| **2** | 🛠️ *End-to-end data processing pipeline for converting raw geospatial data to ML-ready patches.* | ![Processing Pipeline](assets/Data_Processing.png) |
+| **3** | 📊 *Distribution of model confidence scores across different U.S. states during weak supervision.* | ![Confidence Scores](assets/confidence_score.png) |
+| **4** | 🧪 *Evaluation framework used to test model generalizability across held-out states.* | ![Dataset Coverage](assets/Evaluation.png) |
 
 ---
 
@@ -142,4 +130,3 @@ Released for academic research use only. Contact authors for commercial use.
 Maintainer: [@Nibir088](https://github.com/Nibir088)  
 Dataset: [OBH30/IRRISIGHT on Hugging Face](https://huggingface.co/datasets/OBH30/IRRISIGHT)
 
----
